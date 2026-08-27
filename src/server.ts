@@ -1,3 +1,7 @@
-const message: string = "Task Management API";
+import app from "./app.js";
 
-console.log(message);
+const PORT = 5000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
