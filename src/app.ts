@@ -1,4 +1,5 @@
 import express from "express";
+import authRouter from "./modules/auth/auth.route.js";
 
 const app = express();
 
@@ -9,5 +10,7 @@ app.get("/", (_req, res) => {
     message: "Task Management API is running",
   });
 });
+
+app.use("/api/auth", authRouter);
 
 export default app;
