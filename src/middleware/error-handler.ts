@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { ZodError } from "zod";
 
 export const errorHandler = (
   err: unknown,
@@ -6,10 +7,18 @@ export const errorHandler = (
   res: Response,
   _next: NextFunction
 ) => {
+  if (err instanceof ZodError) {
+    return res.status(400).json({
+      success: false,
+      message: "Validation failed",
+      errors: err.issues,
+    });
+  }
+
   const message =
     err instanceof Error ? err.message : "Internal server error";
 
-  res.status(400).json({
+  return res.status(400).json({
     success: false,
     message,
   });
