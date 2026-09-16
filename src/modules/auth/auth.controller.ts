@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { loginSchema, registerSchema } from "./auth.schema.js";
 import { loginUser, registerUser } from "./auth.service.js";
+import type { AuthenticatedRequest } from "../../middleware/auth.js";
 
 export const register = async (req: Request, res: Response) => {
   const data = registerSchema.parse(req.body);
@@ -23,5 +24,15 @@ export const login = async (req: Request, res: Response) => {
     success: true,
     message: "Login successful",
     data: result,
+  });
+};
+
+export const getMe = async (req: AuthenticatedRequest, res: Response) => {
+  res.status(200).json({
+    success: true,
+    data: {
+      userId: req.user!.userId,
+      role: req.user!.role,
+    },
   });
 };
