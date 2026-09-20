@@ -1,0 +1,19 @@
+import prisma from "../../lib/prisma.js";
+import type { CreateProjectInput } from "./project.schema.js";
+
+export const createProject = async (
+  data: CreateProjectInput,
+  userId: number
+) => {
+  const project = await prisma.project.create({
+    data: {
+      name: data.name,
+      ...(data.description !== undefined && {
+        description: data.description,
+      }),
+      ownerId: userId,
+    },
+  });
+
+  return project;
+};
