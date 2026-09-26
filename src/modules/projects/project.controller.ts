@@ -1,7 +1,7 @@
 import type { Response } from "express";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { createProjectSchema } from "./project.schema.js";
-import { createProject, getProjects } from "./project.service.js";
+import { createProject, getProjectById, getProjects } from "./project.service.js";
 
 export const create = async (
   req: AuthenticatedRequest,
@@ -30,5 +30,36 @@ export const getAll = async (
   res.status(200).json({
     success: true,
     data: projects,
+  });
+};
+
+export const getOne = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  const projectId = Number(req.params.id);
+
+  if (!Number.isInteger(projectId) || projectId <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid project ID",
+    });
+  }
+
+  const project = await getProjectById(
+    projectId,
+    req.user!.userId
+  );
+
+  if (!project) {
+    return res.status(404).json({
+      success: false,
+      message: "Project not found",
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    data: project,
   });
 };
