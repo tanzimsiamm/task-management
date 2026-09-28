@@ -69,3 +69,17 @@ export const updateProject = async (
     },
   });
 };
+
+export const deleteProject = async (
+  projectId: number,
+  userId: number
+) => {
+  const result = await prisma.project.deleteMany({
+    where: {
+      id: projectId,
+      ownerId: userId,
+    },
+  });
+
+  return result.count > 0;
+};
