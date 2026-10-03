@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { authenticate } from "../../middleware/auth.js";
-import { create } from "./task.controller.js";
+import {
+  create,
+  getAll,
+} from "./task.controller.js";
 
 const router = Router();
 

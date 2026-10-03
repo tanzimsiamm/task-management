@@ -1,7 +1,7 @@
 import type { Response } from "express";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { createTaskSchema } from "./task.schema.js";
-import { createTask } from "./task.service.js";
+import { createTask, getTasks } from "./task.service.js";
 
 export const create = async (
   req: AuthenticatedRequest,
@@ -18,5 +18,17 @@ export const create = async (
     success: true,
     message: "Task created successfully",
     data: task,
+  });
+};
+
+export const getAll = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  const tasks = await getTasks(req.user!.userId);
+
+  return res.status(200).json({
+    success: true,
+    data: tasks,
   });
 };
