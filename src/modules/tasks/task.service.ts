@@ -116,3 +116,19 @@ const result = await prisma.task.updateMany({
     },
   });
 };
+
+export const deleteTask = async (
+  taskId: number,
+  userId: number
+) => {
+  const result = await prisma.task.deleteMany({
+    where: {
+      id: taskId,
+      project: {
+        ownerId: userId,
+      },
+    },
+  });
+
+  return result.count > 0;
+};
