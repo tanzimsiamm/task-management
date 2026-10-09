@@ -80,15 +80,28 @@ export const updateTask = async (
   userId: number,
   data: UpdateTaskInput
 ) => {
-  const result = await prisma.task.updateMany({
-    where: {
-      id: taskId,
-      project: {
-        ownerId: userId,
-      },
+const result = await prisma.task.updateMany({
+  where: {
+    id: taskId,
+    project: {
+      ownerId: userId,
     },
-    data,
-  });
+  },
+  data: {
+    ...(data.title !== undefined && {
+      title: data.title,
+    }),
+    ...(data.description !== undefined && {
+      description: data.description,
+    }),
+    ...(data.status !== undefined && {
+      status: data.status,
+    }),
+    ...(data.priority !== undefined && {
+      priority: data.priority,
+    }),
+  },
+});
 
   if (result.count === 0) {
     return null;
