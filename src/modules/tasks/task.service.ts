@@ -1,5 +1,5 @@
 import prisma from "../../lib/prisma.js";
-import type { CreateTaskInput, UpdateTaskInput } from "./task.schema.js";
+import type { CreateTaskInput, GetTasksQuery, UpdateTaskInput } from "./task.schema.js";
 
 export const createTask = async (data: CreateTaskInput, userId: number) => {
   const project = await prisma.project.findFirst({
@@ -44,19 +44,41 @@ export const createTask = async (data: CreateTaskInput, userId: number) => {
   return task;
 };
 
-export const getTasks = async (userId: number) => {
-  const tasks = await prisma.task.findMany({
-    where: {
-      project: {
-        ownerId: userId,
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+export const getTasks = async (
+  userId: number,
+  query: GetTasksQuery
+) => {
+  const { page, limit, status, priority, sortBy, order } = query;
 
-  return tasks;
+  const where = {
+    project: {
+      ownerId: userId,
+    },
+    ...(status !== undefined && { status }),
+    ...(priority !== undefined && { priority }),
+  };
+
+  const [tasks, total] = await prisma.$transaction([
+    prisma.task.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: {
+        [sortBy]: order,
+      },
+    }),
+    prisma.task.count({ where }),
+  ]);
+
+  return {
+    data: tasks,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
 };
 
 export const getTaskById = async (
@@ -132,3 +154,4 @@ export const deleteTask = async (
 
   return result.count > 0;
 };
+
