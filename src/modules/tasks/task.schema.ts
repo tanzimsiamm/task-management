@@ -30,3 +30,32 @@ export const updateTaskSchema = z
 export type UpdateTaskInput = z.infer<
   typeof updateTaskSchema
 >;
+
+export const getTasksQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(10),
+
+  status: z.enum([
+    "TODO",
+    "IN_PROGRESS",
+    "DONE",
+  ]).optional(),
+
+  priority: z.enum([
+    "LOW",
+    "MEDIUM",
+    "HIGH",
+  ]).optional(),
+
+  sortBy: z.enum([
+    "createdAt",
+    "updatedAt",
+    "title",
+  ]).default("createdAt"),
+
+  order: z.enum(["asc", "desc"]).default("desc"),
+});
+
+export type GetTasksQuery = z.infer<
+  typeof getTasksQuerySchema
+>;
