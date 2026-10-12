@@ -3,6 +3,7 @@ import prisma from "../../lib/prisma.js";
 import type { LoginInput, RegisterInput } from "./auth.schema.js";
 import jwt from "jsonwebtoken";
 import { env } from "../../config/env.js";
+import { AppError } from "../../utils/app-error.js";
 
 export const registerUser = async (data: RegisterInput) => {
   const existingUser = await prisma.user.findUnique({
@@ -12,7 +13,7 @@ export const registerUser = async (data: RegisterInput) => {
   });
 
   if (existingUser) {
-    throw new Error("Email already registered");
+    throw new AppError(409, "Email already registered");
   }
 
   const hashedPassword = await bcrypt.hash(data.password, 12);
@@ -42,7 +43,7 @@ export const loginUser = async (data: LoginInput) => {
   });
 
   if (!user) {
-    throw new Error("Invalid email or password");
+    throw new AppError(401, "Invalid email or password");
   }
 
   const passwordMatch = await bcrypt.compare(
