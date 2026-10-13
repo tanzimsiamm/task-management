@@ -55,7 +55,14 @@ export const updateProject = async (
       id: projectId,
       ownerId: userId,
     },
-    data,
+    data: {
+  ...(data.name !== undefined && {
+    name: data.name,
+  }),
+  ...(data.description !== undefined && {
+    description: data.description,
+  }),
+},
   });
 
   if (result.count === 0) {
