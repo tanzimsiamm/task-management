@@ -1,15 +1,17 @@
 import bcrypt from "bcrypt";
-import prisma from "../../lib/prisma.js";
-import type { LoginInput, RegisterInput } from "./auth.schema.js";
 import jwt from "jsonwebtoken";
+
 import { env } from "../../config/env.js";
 import { AppError } from "../../utils/app-error.js";
+import type { LoginInput, RegisterInput } from "./auth.schema.js";
+import { generateRefreshToken, hashRefreshToken } from "./refresh-token.js";
+import prisma from "../../lib/prisma.js";
 
-export const registerUser = async (data: RegisterInput) => {
+const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+export async function registerUser(data: RegisterInput) {
   const existingUser = await prisma.user.findUnique({
-    where: {
-      email: data.email,
-    },
+    where: { email: data.email },
   });
 
   if (existingUser) {
@@ -24,34 +26,30 @@ export const registerUser = async (data: RegisterInput) => {
       email: data.email,
       password: hashedPassword,
     },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      createdAt: true,
+    },
   });
 
-  return {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    createdAt: user.createdAt,
-  };
-};
+  return user;
+}
 
-export const loginUser = async (data: LoginInput) => {
+export async function loginUser(data: LoginInput) {
   const user = await prisma.user.findUnique({
-    where: {
-      email: data.email,
-    },
+    where: { email: data.email },
   });
 
   if (!user) {
     throw new AppError(401, "Invalid email or password");
   }
 
-  const passwordMatch = await bcrypt.compare(
-    data.password,
-    user.password
-  );
+  const passwordMatches = await bcrypt.compare(data.password, user.password);
 
-  if (!passwordMatch) {
+  if (!passwordMatches) {
     throw new AppError(401, "Invalid email or password");
   }
 
@@ -61,13 +59,23 @@ export const loginUser = async (data: LoginInput) => {
       role: user.role,
     },
     env.JWT_ACCESS_SECRET,
-    {
-      expiresIn: "15m",
-    }
+    { expiresIn: "15m" },
   );
+
+  const refreshToken = generateRefreshToken();
+  const tokenHash = hashRefreshToken(refreshToken);
+
+  await prisma.refreshToken.create({
+    data: {
+      tokenHash,
+      userId: user.id,
+      expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+    },
+  });
 
   return {
     accessToken,
+    refreshToken,
     user: {
       id: user.id,
       name: user.name,
@@ -75,4 +83,4 @@ export const loginUser = async (data: LoginInput) => {
       role: user.role,
     },
   };
-};
+}
