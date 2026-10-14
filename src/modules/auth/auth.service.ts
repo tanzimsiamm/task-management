@@ -84,3 +84,53 @@ export async function loginUser(data: LoginInput) {
     },
   };
 }
+
+
+export async function refreshAccessToken(token: string) {
+  const tokenHash = hashRefreshToken(token);
+
+  const storedToken = await prisma.refreshToken.findUnique({
+    where: { tokenHash },
+    include: { user: true },
+  });
+
+  if (!storedToken || storedToken.expiresAt <= new Date()) {
+    if (storedToken) {
+      await prisma.refreshToken.delete({
+        where: { id: storedToken.id },
+      });
+    }
+
+    throw new AppError(401, "Invalid or expired refresh token");
+  }
+
+  const newAccessToken = jwt.sign(
+    {
+      userId: storedToken.user.id,
+      role: storedToken.user.role,
+    },
+    env.JWT_ACCESS_SECRET,
+    { expiresIn: "15m" },
+  );
+
+  const newRefreshToken = generateRefreshToken();
+  const newTokenHash = hashRefreshToken(newRefreshToken);
+
+  await prisma.$transaction([
+    prisma.refreshToken.delete({
+      where: { id: storedToken.id },
+    }),
+    prisma.refreshToken.create({
+      data: {
+        tokenHash: newTokenHash,
+        userId: storedToken.userId,
+        expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+      },
+    }),
+  ]);
+
+  return {
+    accessToken: newAccessToken,
+    refreshToken: newRefreshToken,
+  };
+}
