@@ -134,3 +134,14 @@ export async function refreshAccessToken(token: string) {
     refreshToken: newRefreshToken,
   };
 }
+
+
+export async function logoutUser(token: string) {
+  const tokenHash = hashRefreshToken(token);
+
+  await prisma.refreshToken.deleteMany({
+    where: { tokenHash },
+  });
+
+  return { message: "Logged out successfully" };
+}

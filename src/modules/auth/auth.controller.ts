@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { loginSchema, registerSchema } from "./auth.schema.js";
-import { loginUser, refreshAccessToken, registerUser } from "./auth.service.js";
+import { loginUser, logoutUser, refreshAccessToken, registerUser } from "./auth.service.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import z from "zod";
 
@@ -56,6 +56,26 @@ export async function refreshTokenController(
       message: "Token refreshed successfully",
       data: tokens,
     });
+  } catch (error) {
+    next(error);
+  }
+}
+  
+
+export async function logoutController(
+  req: import("express").Request,
+  res: import("express").Response,
+  next: import("express").NextFunction,
+) {
+  try {
+    const schema = z.object({
+      refreshToken: z.string().min(1),
+    });
+
+    const { refreshToken } = schema.parse(req.body);
+    const result = await logoutUser(refreshToken);
+
+    res.status(200).json(result);
   } catch (error) {
     next(error);
   }
