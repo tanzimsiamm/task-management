@@ -85,56 +85,72 @@ export async function loginUser(data: LoginInput) {
   };
 }
 
-
 export async function refreshAccessToken(token: string) {
   const tokenHash = hashRefreshToken(token);
 
-  const storedToken = await prisma.refreshToken.findUnique({
-    where: { tokenHash },
-    include: { user: true },
-  });
+  return prisma.$transaction(
+    async (tx) => {
+      // Lock the token row until this transaction finishes.
+      const rows = await tx.$queryRaw<
+        { id: number; userId: number; expiresAt: Date }[]
+      >`
+        SELECT "id", "userId", "expiresAt"
+        FROM "RefreshToken"
+        WHERE "tokenHash" = ${tokenHash}
+        FOR UPDATE
+      `;
 
-  if (!storedToken || storedToken.expiresAt <= new Date()) {
-    if (storedToken) {
-      await prisma.refreshToken.delete({
+      const storedToken = rows[0];
+
+      if (!storedToken || storedToken.expiresAt <= new Date()) {
+        if (storedToken) {
+          await tx.refreshToken.delete({
+            where: { id: storedToken.id },
+          });
+        }
+
+        throw new AppError(401, "Invalid or expired refresh token");
+      }
+
+      const user = await tx.user.findUnique({
+        where: { id: storedToken.userId },
+        select: { id: true, role: true },
+      });
+
+      if (!user) {
+        throw new AppError(401, "Invalid refresh token");
+      }
+
+      const accessToken = jwt.sign(
+        { userId: user.id, role: user.role },
+        env.JWT_ACCESS_SECRET,
+        { expiresIn: "15m" },
+      );
+
+      const newRefreshToken = generateRefreshToken();
+
+      await tx.refreshToken.delete({
         where: { id: storedToken.id },
       });
-    }
 
-    throw new AppError(401, "Invalid or expired refresh token");
-  }
+      await tx.refreshToken.create({
+        data: {
+          tokenHash: hashRefreshToken(newRefreshToken),
+          userId: user.id,
+          expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+        },
+      });
 
-  const newAccessToken = jwt.sign(
-    {
-      userId: storedToken.user.id,
-      role: storedToken.user.role,
+      return {
+        accessToken,
+        refreshToken: newRefreshToken,
+      };
     },
-    env.JWT_ACCESS_SECRET,
-    { expiresIn: "15m" },
+    {
+      isolationLevel: "ReadCommitted",
+    },
   );
-
-  const newRefreshToken = generateRefreshToken();
-  const newTokenHash = hashRefreshToken(newRefreshToken);
-
-  await prisma.$transaction([
-    prisma.refreshToken.delete({
-      where: { id: storedToken.id },
-    }),
-    prisma.refreshToken.create({
-      data: {
-        tokenHash: newTokenHash,
-        userId: storedToken.userId,
-        expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
-      },
-    }),
-  ]);
-
-  return {
-    accessToken: newAccessToken,
-    refreshToken: newRefreshToken,
-  };
 }
-
 
 export async function logoutUser(token: string) {
   const tokenHash = hashRefreshToken(token);
