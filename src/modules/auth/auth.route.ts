@@ -2,11 +2,12 @@ import { Router } from "express";
 import { getMe, login, logoutController, refreshTokenController, register } from "./auth.controller.js";
 import { authenticate } from "../../middleware/auth.js";
 import { authorize } from "../../middleware/authorize.js";
+import { authRateLimiter } from "../../middleware/auth-rate-limit.js";
 
 const router = Router();
 
-router.post("/register", register);
-router.post("/login", login);
+router.post("/register", authRateLimiter, register);
+router.post("/login", authRateLimiter, login);
 router.get("/me", authenticate, getMe);
 router.get(
   "/admin-test",

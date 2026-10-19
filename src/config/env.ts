@@ -1,17 +1,23 @@
+
 import "dotenv/config";
+import { z } from "zod";
 
-const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
+const envSchema = z.object({
+  DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+  JWT_ACCESS_SECRET: z.string().min(1, "JWT_ACCESS_SECRET is required"),
+  JWT_REFRESH_SECRET: z.string().min(1, "JWT_REFRESH_SECRET is required"),
+  PORT: z.coerce.number().int().positive().default(5000),
+  NODE_ENV: z
+    .enum(["development", "test", "production"])
+    .default("development"),
+});
 
-if (!JWT_ACCESS_SECRET) {
-  throw new Error("JWT_ACCESS_SECRET is not defined");
+const result = envSchema.safeParse(process.env);
+
+if (!result.success) {
+  console.error("Invalid environment configuration:");
+  console.error(z.treeifyError(result.error));
+  process.exit(1);
 }
 
-if (!JWT_REFRESH_SECRET) {
-  throw new Error("JWT_REFRESH_SECRET is not defined");
-}
-
-export const env = {
-  JWT_ACCESS_SECRET,
-  JWT_REFRESH_SECRET,
-};
+export const env = result.data;
